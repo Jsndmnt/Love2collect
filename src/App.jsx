@@ -1,46 +1,47 @@
 import { useState, useCallback, useRef } from 'react'
 import './App.css'
 
+const LANGUES = ['Français', 'Anglais', 'Japonais', 'Allemand', 'Espagnol', 'Italien', 'Coréen', 'Chinois']
+
 const CONDITIONS = ['Mint (MT)', 'Near Mint (NM)', 'Excellent (EX)', 'Good (GD)', 'Light Played (LP)', 'Played (PL)', 'Poor (PO)']
 
 const SHOPIFY_HEADERS = [
   'Title', 'URL handle', 'Description', 'Vendor', 'Product category', 'Type', 'Tags',
   'Published on online store', 'Status', 'SKU',
-  'Option1 name', 'Option1 value',
   'Price', 'Compare-at price', 'Cost per item', 'Charge tax',
   'Inventory quantity', 'Continue selling when out of stock',
-  'Weight value (grams)', 'Weight unit for display',
   'Requires shipping', 'Fulfillment service',
   'Product image URL', 'Image position', 'Image alt text',
-  'SEO title', 'SEO description'
+  'SEO title', 'SEO description',
+  'Metafield: custom.etat [single_line_text_field]',
+  'Metafield: custom.langue [single_line_text_field]'
 ]
 
 function slugify(str) {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
-function buildRow(card, price, qty, condition) {
+function buildRow(card, price, qty, condition, langue) {
   const total = card.set?.printedTotal || card.set?.total || '?'
-  const title = `${card.name} - ${card.number}/${total} - ${card.set?.name || ''} - ${condition}`
+  const title = `${card.name} - ${card.number}/${total} - ${card.set?.name || ''} - ${condition} - ${langue}`
   const handle = slugify(title)
   const rarity = card.rarity || ''
-  const sku = `PKM-${(card.set?.id || 'XX').toUpperCase()}-${card.number}-${condition.replace(/[^A-Z]/g, '')}`
-  const tags = [card.set?.name, rarity, 'Pokemon TCG', 'Carte Pokemon', condition].filter(Boolean).join(', ')
-  const description = `<p><strong>${card.name}</strong> - ${card.set?.name || ''}</p><p>Numero : ${card.number}/${total} | Rarete : ${rarity} | Etat : ${condition}</p>`
-  const seoDesc = `Carte Pokemon ${card.name} ${card.number}/${total} - ${card.set?.name || ''} - Etat ${condition}. Achetez vos cartes Pokemon sur Love2Collect.`.slice(0, 320)
-  const img = card.images?.large || card.images?.small || ''
+  const sku = `PKM-${(card.set?.id || 'XX').toUpperCase()}-${card.number}-${condition.replace(/[^A-Z]/g, '')}-${langue.slice(0,2).toUpperCase()}`
+  const tags = [card.set?.name, rarity, 'Pokemon TCG', 'Carte Pokemon', langue].filter(Boolean).join(', ')
+  const description = `<p><strong>${card.name}</strong> - ${card.set?.name || ''}</p><p>Numero : ${card.number}/${total} | Rarete : ${rarity} | Etat : ${condition} | Langue : ${langue}</p>`
+  const seoDesc = `Carte Pokemon ${card.name} ${card.number}/${total} - ${card.set?.name || ''} - ${condition} - ${langue}. Achetez vos cartes Pokemon sur Love2Collect.`.slice(0, 320)
+  const img = card.images?.small || ''
   const imgAlt = `Carte Pokemon ${card.name} ${card.number} ${card.set?.name || ''}`
   return [
     title, handle, description, 'Love2Collect',
     'Toys & Games > Toys > Collectible Toys', 'Carte Pokemon TCG', tags,
-    'TRUE', 'Active', sku,
-    'Etat', condition,
+    'TRUE', 'active', sku,
     parseFloat(price || 0).toFixed(2), '', '', 'TRUE',
-    qty, 'DENY',
-    '', 'g',
+    qty, 'deny',
     'TRUE', 'manual',
     img, '1', imgAlt,
-    title.slice(0, 70), seoDesc
+    title.slice(0, 70), seoDesc,
+    condition, langue
   ]
 }
 
@@ -76,6 +77,12 @@ function BasketItem({ item, onChange, onRemove }) {
             <label>État</label>
             <select className="binput cond" value={item.condition} onChange={e => onChange(item.id, 'condition', e.target.value)}>
               {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="fg">
+            <label>Langue</label>
+            <select className="binput cond" value={item.langue || 'Français'} onChange={e => onChange(item.id, 'langue', e.target.value)}>
+              {LANGUES.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
           </div>
           <div className="fg">
@@ -138,7 +145,8 @@ export default function App() {
       card,
       price: '',
       qty: 1,
-      condition: 'Near Mint (NM)'
+      condition: 'Near Mint (NM)',
+      langue: 'Français'
     }])
     showToast(`${card.name} ajouté !`)
   }
@@ -152,7 +160,7 @@ export default function App() {
   }
 
   const exportCSV = () => {
-    const rows = [SHOPIFY_HEADERS, ...basket.map(i => buildRow(i.card, i.price, i.qty, i.condition))]
+    const rows = [SHOPIFY_HEADERS, ...basket.map(i => buildRow(i.card, i.price, i.qty, i.condition, i.langue || 'Français'))]
     const csv = rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
