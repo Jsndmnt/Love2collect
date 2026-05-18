@@ -4,13 +4,15 @@ import './App.css'
 const CONDITIONS = ['Mint (MT)', 'Near Mint (NM)', 'Excellent (EX)', 'Good (GD)', 'Light Played (LP)', 'Played (PL)', 'Poor (PO)']
 
 const SHOPIFY_HEADERS = [
-  'Handle', 'Title', 'Body (HTML)', 'Vendor', 'Type', 'Tags',
-  'Published', 'Option1 Name', 'Option1 Value',
-  'Variant Price', 'Variant Compare At Price', 'Variant Inventory Qty',
-  'Variant Inventory Policy', 'Variant Fulfillment Service',
-  'Variant Requires Shipping', 'Variant Taxable',
-  'Image Src', 'Image Position', 'Image Alt Text',
-  'SEO Title', 'SEO Description'
+  'Title', 'URL handle', 'Description', 'Vendor', 'Product category', 'Type', 'Tags',
+  'Published on online store', 'Status', 'SKU',
+  'Option1 name', 'Option1 value',
+  'Price', 'Compare-at price', 'Cost per item', 'Charge tax',
+  'Inventory quantity', 'Continue selling when out of stock',
+  'Weight value (grams)', 'Weight unit for display',
+  'Requires shipping', 'Fulfillment service',
+  'Product image URL', 'Image position', 'Image alt text',
+  'SEO title', 'SEO description'
 ]
 
 function slugify(str) {
@@ -18,27 +20,31 @@ function slugify(str) {
 }
 
 function buildRow(card, price, qty, condition) {
-  const handle = slugify(`${card.name}-${card.number}-${card.set?.id || ''}-${slugify(condition)}`)
   const total = card.set?.printedTotal || card.set?.total || '?'
   const title = `${card.name} - ${card.number}/${total} - ${card.set?.name || ''} - ${condition}`
-  const rarity = card.rarity || 'Unknown'
-  const tags = [card.set?.name, rarity, 'Pokémon TCG', 'Carte', condition].filter(Boolean).join(', ')
-  const body = `<p><strong>${card.name}</strong> — ${card.set?.name || ''}</p><p>Numéro : ${card.number} | Rareté : ${rarity} | État : ${condition}</p>`
-  const mp = card.cardmarket?.prices?.averageSellPrice || card.tcgplayer?.prices?.holofoil?.market || ''
-  const compareAt = mp ? parseFloat(mp).toFixed(2) : ''
+  const handle = slugify(title)
+  const rarity = card.rarity || ''
+  const sku = `PKM-${(card.set?.id || 'XX').toUpperCase()}-${card.number}-${condition.replace(/[^A-Z]/g, '')}`
+  const tags = [card.set?.name, rarity, 'Pokemon TCG', 'Carte Pokemon', condition].filter(Boolean).join(', ')
+  const description = `<p><strong>${card.name}</strong> - ${card.set?.name || ''}</p><p>Numero : ${card.number}/${total} | Rarete : ${rarity} | Etat : ${condition}</p>`
+  const seoDesc = `Carte Pokemon ${card.name} ${card.number}/${total} - ${card.set?.name || ''} - Etat ${condition}. Achetez vos cartes Pokemon sur Love2Collect.`.slice(0, 320)
   const img = card.images?.large || card.images?.small || ''
+  const imgAlt = `Carte Pokemon ${card.name} ${card.number} ${card.set?.name || ''}`
   return [
-    handle, title, body, 'Pokémon', 'Carte TCG', tags,
-    'TRUE', 'État', condition,
-    parseFloat(price || 0).toFixed(2), compareAt, qty,
-    'deny', 'manual', 'TRUE', 'TRUE',
-    img, '1', `${card.name} ${card.number} ${card.set?.name || ''}`,
-    title, body.replace(/<[^>]+>/g, '').slice(0, 160)
+    title, handle, description, 'Love2Collect',
+    'Toys & Games > Toys > Collectible Toys', 'Carte Pokemon TCG', tags,
+    'TRUE', 'Active', sku,
+    'Etat', condition,
+    parseFloat(price || 0).toFixed(2), '', '', 'TRUE',
+    qty, 'DENY',
+    '', 'g',
+    'TRUE', 'manual',
+    img, '1', imgAlt,
+    title.slice(0, 70), seoDesc
   ]
 }
 
 function CardResult({ card, onAdd }) {
-  const mp = card.cardmarket?.prices?.averageSellPrice || card.tcgplayer?.prices?.holofoil?.market || null
   return (
     <div className="card-result">
       <div className="card-img-wrap">
@@ -50,12 +56,6 @@ function CardResult({ card, onAdd }) {
         <div className="card-name">{card.name}</div>
         <div className="card-sub">{card.set?.name} — {card.number}/{card.set?.printedTotal || card.set?.total || '?'}</div>
         <div className="card-rarity">{card.rarity || '—'}</div>
-        {mp && (
-          <div className="card-price">
-            <span className="price-label">CardMarket</span>
-            <span className="price-value">{parseFloat(mp).toFixed(2)} €</span>
-          </div>
-        )}
         <button className="add-btn" onClick={() => onAdd(card)}>+ Ajouter</button>
       </div>
     </div>
@@ -133,11 +133,10 @@ export default function App() {
   }
 
   const addToBasket = (card) => {
-    const mp = card.cardmarket?.prices?.averageSellPrice || card.tcgplayer?.prices?.holofoil?.market || ''
     setBasket(prev => [...prev, {
       id: `${card.id}-${Date.now()}`,
       card,
-      price: mp ? parseFloat(mp).toFixed(2) : '',
+      price: '',
       qty: 1,
       condition: 'Near Mint (NM)'
     }])
@@ -186,13 +185,13 @@ export default function App() {
               <input
                 className="search-input"
                 type="text"
-                placeholder="Nom de la carte (ex: Dracaufeu) ou numéro..."
+                placeholder="Nom en anglais (ex: Charizard, Pikach...) ou numéro"
                 value={query}
                 onChange={handleInput}
                 autoFocus
               />
             </div>
-            <p className="hint">Recherche automatique · Résultats depuis PokémonTCG API</p>
+            <p className="hint">Recherche partielle supportée · "chari" trouve Charizard · Résultats depuis PokémonTCG API</p>
             {loading && <div className="spinner"><div className="spin" /><span>Recherche en cours...</span></div>}
             {!loading && error && <div className="error-msg">{error}</div>}
             {!loading && !error && (
