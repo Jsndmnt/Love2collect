@@ -7,9 +7,9 @@ const CONDITIONS = ['Mint (MT)', 'Near Mint (NM)', 'Excellent (EX)', 'Good (GD)'
 
 const SHOPIFY_HEADERS = [
   'Title', 'URL handle', 'Description', 'Vendor', 'Product category', 'Type', 'Tags',
-  'Published on online store', 'Status', 'SKU',
-  'Price', 'Compare-at price', 'Cost per item', 'Charge tax',
-  'Inventory quantity', 'Continue selling when out of stock', 'Track quantity',
+  'Published', 'Status', 'SKU',
+  'Price', 'Compare-at price', 'Cost per item', 'Charge tax', 'Inventory Tracker',
+  'Inventory quantity', 'Track quantity',
   'Requires shipping', 'Fulfillment service',
   'Product image URL', 'Image position', 'Image alt text',
   'SEO title', 'SEO description',
@@ -39,8 +39,8 @@ function buildRow(card, price, qty, condition, langue, nomFr) {
     'Collectible Trading Cards',
     'Carte Pokemon TCG', tags,
     'TRUE', 'active', sku,
-    parseFloat(price || 0).toFixed(2), '', '', 'TRUE',
-    qty, 'deny', 'TRUE',
+    parseFloat(price || 0).toFixed(2), '', '', 'TRUE', 'shopify'
+    qty, 'TRUE',
     'TRUE', 'manual',
     img, '1', imgAlt,
     title.slice(0, 70), seoDesc,
