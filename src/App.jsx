@@ -34,7 +34,7 @@ function buildRow(card, price, qty, condition, langue) {
   const imgAlt = `Carte Pokemon ${card.name} ${card.number} ${card.set?.name || ''}`
   return [
     title, handle, description, 'Love2Collect',
-    'Arts et loisirs > Loisirs et arts créatifs > Articles de collection > Cartes à collectionner', 'Carte Pokemon TCG', tags,
+    'Toys & Games > Collectible Trading Cards', 'Carte Pokemon TCG', tags,
     'TRUE', 'active', sku,
     parseFloat(price || 0).toFixed(2), '', '', 'TRUE',
     qty, 'deny',
