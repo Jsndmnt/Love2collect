@@ -13,8 +13,9 @@ const SHOPIFY_HEADERS = [
   'Requires shipping', 'Fulfillment service',
   'Product image URL', 'Image position', 'Image alt text',
   'SEO title', 'SEO description',
-   'Etat (product.metafields.custom.etat)',
-  'Langue (product.metafields.custom.langue)'
+  'Template suffix',
+  'Metafield: custom.etat [single_line_text_field]',
+  'Metafield: custom.langue [single_line_text_field]'
 ]
 
 function slugify(str) {
@@ -35,13 +36,15 @@ function buildRow(card, price, qty, condition, langue, nomFr) {
   const imgAlt = `Carte Pokemon ${card.name} ${card.number} ${card.set?.name || ''}`
   return [
     title, handle, description, 'Love2Collect',
-    'Collectible Trading Cards', 'Carte Pokemon TCG', tags,
+    'Collectible Trading Cards',
+    'Carte Pokemon TCG', tags,
     'TRUE', 'active', sku,
     parseFloat(price || 0).toFixed(2), '', '', 'TRUE',
-qty, 'deny',
-'TRUE', 'TRUE', 'manual',
+    qty, 'deny', 'TRUE',
+    'TRUE', 'manual',
     img, '1', imgAlt,
     title.slice(0, 70), seoDesc,
+    'carte-a-l-unite',
     condition, langue
   ]
 }
