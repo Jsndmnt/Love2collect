@@ -63,6 +63,7 @@ body {
 .binput:focus { border-color: #b8932a; }
 .binput.price { width: 80px; }
 .binput.qty { width: 55px; }
+.binput.nomfr { width: 220px; }
 .binput.cond { width: 155px; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23b8932a'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; padding-right: 24px; background-color: #f8f8f5; }
 .rbtn { background: none; border: none; color: #ccc; font-size: 15px; cursor: pointer; padding: 3px; flex-shrink: 0; transition: color .2s; line-height: 1; }
 .rbtn:hover { color: #e05555; }
