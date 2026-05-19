@@ -13,8 +13,8 @@ const SHOPIFY_HEADERS = [
   'Requires shipping', 'Fulfillment service',
   'Product image URL', 'Image position', 'Image alt text',
   'SEO title', 'SEO description',
-  'Metafield: custom.etat [single_line_text_field]',
-  'Metafield: custom.langue [single_line_text_field]'
+  'Etat (product.metafields.custom.etat)',
+  'Langue (product.metafields.custom.langue)'
 ]
 
 function slugify(str) {
