@@ -13,7 +13,7 @@ const SHOPIFY_HEADERS = [
   'Requires shipping', 'Fulfillment service',
   'Product image URL', 'Image position', 'Image alt text',
   'SEO title', 'SEO description',
-  'Etat (product.metafields.custom.etat)',
+   'Etat (product.metafields.custom.etat)',
   'Langue (product.metafields.custom.langue)'
 ]
 
@@ -21,20 +21,21 @@ function slugify(str) {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
-function buildRow(card, price, qty, condition, langue) {
+function buildRow(card, price, qty, condition, langue, nomFr) {
   const total = card.set?.printedTotal || card.set?.total || '?'
-  const title = `${card.name} - ${card.number}/${total} - ${card.set?.name || ''} - ${condition} - ${langue}`
+  const displayName = nomFr && nomFr.trim() ? nomFr.trim() : card.name
+  const title = `${displayName} - ${card.number}/${total} - ${card.set?.name || ''} - ${condition} - ${langue}`
   const handle = slugify(title)
   const rarity = card.rarity || ''
   const sku = `PKM-${(card.set?.id || 'XX').toUpperCase()}-${card.number}-${condition.replace(/[^A-Z]/g, '')}-${langue.slice(0,2).toUpperCase()}`
-  const tags = [card.set?.name, rarity, 'Pokemon TCG', 'Carte Pokemon', langue].filter(Boolean).join(', ')
-  const description = `<p><strong>${card.name}</strong> - ${card.set?.name || ''}</p><p>Numero : ${card.number}/${total} | Rarete : ${rarity} | Etat : ${condition} | Langue : ${langue}</p>`
-  const seoDesc = `Carte Pokemon ${card.name} ${card.number}/${total} - ${card.set?.name || ''} - ${condition} - ${langue}. Achetez vos cartes Pokemon sur Love2Collect.`.slice(0, 320)
+  const tags = [card.set?.name, rarity, 'Pokemon TCG', 'Carte Pokemon', langue, 'carte-unitaire'].filter(Boolean).join(', ')
+  const description = `<p><strong>${displayName}</strong> - ${card.set?.name || ''}</p><p>Numero : ${card.number}/${total} | Rarete : ${rarity} | Etat : ${condition} | Langue : ${langue}</p>`
+  const seoDesc = `Carte Pokemon ${displayName} ${card.number}/${total} - ${card.set?.name || ''} - ${condition} - ${langue}. Achetez vos cartes Pokemon sur Love2Collect.`.slice(0, 320)
   const img = card.images?.small || ''
   const imgAlt = `Carte Pokemon ${card.name} ${card.number} ${card.set?.name || ''}`
   return [
     title, handle, description, 'Love2Collect',
-    'Toys & Games > Collectible Trading Cards', 'Carte Pokemon TCG', tags,
+    'Toys & Games > Collectible Items > Collectible Trading Cards', 'Carte Pokemon TCG', tags,
     'TRUE', 'active', sku,
     parseFloat(price || 0).toFixed(2), '', '', 'TRUE',
     qty, 'deny',
@@ -72,6 +73,10 @@ function BasketItem({ item, onChange, onRemove }) {
       <div className="bdetails">
         <div className="bname">{item.card.name}</div>
         <div className="bset">{item.card.set?.name} · {item.card.number}</div>
+        <div className="fg" style={{marginBottom:'6px',width:'100%'}}>
+          <label>Nom FR (optionnel)</label>
+          <input type="text" className="binput nomfr" placeholder={item.card.name} value={item.nomFr || ''} onChange={e => onChange(item.id, 'nomFr', e.target.value)} />
+        </div>
         <div className="bcontrols">
           <div className="fg">
             <label>État</label>
@@ -146,7 +151,8 @@ export default function App() {
       price: '',
       qty: 1,
       condition: 'Near Mint (NM)',
-      langue: 'Français'
+      langue: 'Français',
+      nomFr: ''
     }])
     showToast(`${card.name} ajouté !`)
   }
@@ -160,7 +166,7 @@ export default function App() {
   }
 
   const exportCSV = () => {
-    const rows = [SHOPIFY_HEADERS, ...basket.map(i => buildRow(i.card, i.price, i.qty, i.condition, i.langue || 'Français'))]
+    const rows = [SHOPIFY_HEADERS, ...basket.map(i => buildRow(i.card, i.price, i.qty, i.condition, i.langue || 'Français', i.nomFr || ''))]
     const csv = rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
