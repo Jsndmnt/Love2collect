@@ -1,3 +1,4 @@
+import { translateToEN, getFrenchName } from './pokemonNames.js'
 import { useState, useCallback, useRef } from 'react'
 import './App.css'
 
@@ -14,8 +15,9 @@ const SHOPIFY_HEADERS = [
   'Product image URL', 'Image position', 'Image alt text',
   'SEO title', 'SEO description',
   'Template suffix',
-  'Etat (product.metafields.custom.etat)',
+   'Etat (product.metafields.custom.etat)',
   'Langue (product.metafields.custom.langue)'
+
 ]
 
 function slugify(str) {
@@ -39,7 +41,7 @@ function buildRow(card, price, qty, condition, langue, nomFr) {
     'Collectible Trading Cards',
     'Carte Pokemon TCG', tags,
     'TRUE', 'active', sku,
-    parseFloat(price || 0).toFixed(2), '', '', 'TRUE', 'shopify',
+    parseFloat(price || 0).toFixed(2), '', '', 'TRUE', 'shoify',
     qty, 'TRUE',
     'TRUE', 'manual',
     img, '1', imgAlt,
@@ -58,7 +60,8 @@ function CardResult({ card, onAdd }) {
           : <span className="card-no-img">Image indisponible</span>}
       </div>
       <div className="card-info">
-        <div className="card-name">{card.name}</div>
+        <div className="card-name">{getFrenchName(card.name)}</div>
+        <div className="card-name-en">{card.name}</div>
         <div className="card-sub">{card.set?.name} — {card.number}/{card.set?.printedTotal || card.set?.total || '?'}</div>
         <div className="card-rarity">{card.rarity || '—'}</div>
         <button className="add-btn" onClick={() => onAdd(card)}>+ Ajouter</button>
@@ -74,7 +77,7 @@ function BasketItem({ item, onChange, onRemove }) {
         ? <img src={item.card.images.small} alt={item.card.name} className="bimg" />
         : <div className="bimg" />}
       <div className="bdetails">
-        <div className="bname">{item.card.name}</div>
+        <div className="bname">{getFrenchName(item.card.name)}</div>
         <div className="bset">{item.card.set?.name} · {item.card.number}</div>
         <div className="fg" style={{marginBottom:'6px',width:'100%'}}>
           <label>Nom FR (optionnel)</label>
@@ -129,7 +132,8 @@ export default function App() {
     if (!q.trim()) { setResults([]); return }
     setLoading(true); setError('')
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`)
+      const translated = translateToEN(q.trim())
+      const res = await fetch(`/api/search?q=${encodeURIComponent(translated)}`)
       const data = await res.json()
       if (!data.data?.length) { setError('Aucune carte trouvée.'); setResults([]); return }
       setResults(data.data)
@@ -155,7 +159,7 @@ export default function App() {
       qty: 1,
       condition: 'Near Mint (NM)',
       langue: 'Français',
-      nomFr: ''
+      nomFr: getFrenchName(card.name) !== card.name ? getFrenchName(card.name) : ''
     }])
     showToast(`${card.name} ajouté !`)
   }
