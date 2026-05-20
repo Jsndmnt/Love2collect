@@ -41,7 +41,7 @@ function buildRow(card, price, qty, condition, langue, nomFr) {
     'Collectible Trading Cards',
     'Carte Pokemon TCG', tags,
     'TRUE', 'active', sku,
-    parseFloat(price || 0).toFixed(2), '', '', 'TRUE', 'shoify',
+    parseFloat(price || 0).toFixed(2), '', '', 'TRUE', 'shopify',
     qty, 'TRUE',
     'TRUE', 'manual',
     img, '1', imgAlt,
