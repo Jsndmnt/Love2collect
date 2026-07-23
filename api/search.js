@@ -1,3 +1,6 @@
+const TCGDEX = 'https://api.tcgdex.net/v2/fr';
+const MAX_RESULTS = 20;
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -6,51 +9,60 @@ export default async function handler(req, res) {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Missing query' });
 
+  const term = q.trim();
+  const isNumber = /^\d+$/.test(term);
+
   try {
-    const isNumber = /^\d+$/.test(q.trim());
-    let searchTerm = q.trim();
+    // Recherche directe en francais : plus besoin de traduire quoi que ce soit.
+    // Le filtre par defaut est "laxiste" (recherche partielle).
+    // Un double egal (name==) forcerait la correspondance exacte.
+    const filter = isNumber
+      ? `localId=${encodeURIComponent(term)}`
+      : `name=${encodeURIComponent(term)}`;
 
-    // Si ce n'est pas un numéro, on traduit via Claude
-    if (!isNumber) {
-      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 50,
-          messages: [{
-            role: 'user',
-            content: `Traduis ce nom de Pokémon en anglais (nom exact utilisé dans le jeu de cartes anglais). Réponds UNIQUEMENT avec le nom anglais, rien d'autre. Si c'est déjà en anglais, retourne-le tel quel. Nom : "${q.trim()}"`
-          }]
-        })
-      });
+    const listRes = await fetch(`${TCGDEX}/cards?${filter}`);
+    if (!listRes.ok) throw new Error(`TCGdex list ${listRes.status}`);
 
-      if (claudeRes.ok) {
-        const claudeData = await claudeRes.json();
-        const translated = claudeData.content?.[0]?.text?.trim();
-        if (translated) searchTerm = translated;
-      }
+    const briefs = await listRes.json();
+    if (!Array.isArray(briefs) || briefs.length === 0) {
+      return res.status(200).json({ data: [] });
     }
 
-    // Recherche exacte d'abord
-    const queryStr = isNumber ? `number:${searchTerm}` : `name:"${searchTerm}"`;
-    const url = `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(queryStr)}&pageSize=20&orderBy=-set.releaseDate`;
-    const apiRes = await fetch(url);
-    const data = await apiRes.json();
+    // L'endpoint /cards ne renvoie que des resumes (id, localId, name, image).
+    // Il faut un second appel par carte pour la rarete et le set.
+    const details = await Promise.all(
+      briefs.slice(0, MAX_RESULTS).map(async (b) => {
+        try {
+          const r = await fetch(`${TCGDEX}/cards/${b.id}`);
+          return r.ok ? await r.json() : null;
+        } catch {
+          return null;
+        }
+      })
+    );
 
-    // Fallback : recherche partielle si aucun résultat
-    if (!data.data?.length && !isNumber) {
-      const fallbackUrl = `https://api.pokemontcg.io/v2/cards?q=name:${encodeURIComponent(searchTerm + '*')}&pageSize=20&orderBy=-set.releaseDate`;
-      const fallbackRes = await fetch(fallbackUrl);
-      const fallbackData = await fallbackRes.json();
-      return res.status(200).json(fallbackData);
-    }
+    // On remet la reponse au format attendu par App.jsx pour ne rien casser cote client.
+    const data = details.filter(Boolean).map((c) => ({
+      id: c.id,
+      name: c.name,
+      number: c.localId,
+      rarity: c.rarity || '',
+      set: {
+        id: c.set?.id || '',
+        name: c.set?.name || '',
+        printedTotal: c.set?.cardCount?.official ?? null,
+        total: c.set?.cardCount?.total ?? null,
+      },
+      images: {
+        small: c.image ? `${c.image}/low.webp` : null,
+        large: c.image ? `${c.image}/high.png` : null,
+      },
+    }));
 
-    res.status(200).json(data);
+    // Cartes les plus recentes en premier (approximation via l'id de set).
+    data.sort((a, b) => (b.set.id || '').localeCompare(a.set.id || ''));
+
+    res.status(200).json({ data });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
