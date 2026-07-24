@@ -6,7 +6,7 @@ import './App.css'
 // URL de base de tes images hébergées sur Vercel, SANS slash final.
 // Exemple : 'https://love2collect.vercel.app/cartes'
 // Laisse la chaîne vide pour garder l'ancien comportement (image officielle de l'API).
-const IMG_BASE = ''
+const IMG_BASE = 'https://love2collect.vercel.app/cartes'
 // Mets à false si tu ne photographies que le recto.
 const EXPORT_VERSO = true
 
@@ -76,7 +76,7 @@ function buildRows(card, price, qty, condition, langue, nomFr) {
   const handle = slugify(title)
   const sku = buildSku(card, condition, langue)
   const tags = [setName, rarity, 'Pokemon TCG', 'Carte Pokemon', langue, 'carte-unitaire'].filter(Boolean).join(', ')
-  const description = `<p><strong>${displayName}</strong> - ${setName}</p><p>Numéro : ${numero} | Rareté : ${rarity} | État : ${condition} | Langue : ${langue}</p><p>Carte vérifiée à la main, recto et verso. La photo montre la carte que tu recevras.</p>`
+  const description = `<p><strong>${displayName}</strong>, carte issue de l'extension ${setName}.</p><p>Chaque carte est examinée à la main, recto et verso, avant sa mise en vente. La photo de l'annonce montre exactement la carte que tu recevras, jamais un visuel générique. Expédition sous toploader et pochette rigide.</p>`
 
   const seoTitle = truncate(`${displayName} ${numero} ${setName} ${condition}`, 68)
   const seoDesc = truncate(`Carte Pokémon ${displayName} ${numero} - ${setName} - ${condition} - ${langue}. Vérifiée à la main, photo réelle, envoi protégé.`, 320)
