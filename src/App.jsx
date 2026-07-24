@@ -5,7 +5,7 @@ import './App.css'
 // URL de base de tes images hébergées sur Vercel, SANS slash final.
 // Exemple : 'https://love2collect.vercel.app/cartes'
 // Laisse la chaîne vide pour garder l'ancien comportement (image officielle de l'API).
-const IMG_BASE = ''
+const IMG_BASE = 'https://love2collect.vercel.app/cartes'
 // Mets à false si tu ne photographies que le recto.
 const EXPORT_VERSO = true
 
