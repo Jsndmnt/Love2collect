@@ -8,6 +8,12 @@ import './App.css'
 const IMG_BASE = ''
 // Mets à false si tu ne photographies que le recto.
 const EXPORT_VERSO = true
+
+// Correspondance de raretés, vide par défaut : les libellés TCGdex sortent tels quels.
+// N'ajoute une ligne que si une rareté a une traduction française sans ambiguïté.
+const RARETES = {
+  // 'Common': 'Commune',
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LANGUES = ['Français', 'Anglais', 'Japonais', 'Allemand', 'Espagnol', 'Italien', 'Coréen', 'Chinois']
@@ -40,23 +46,37 @@ function slugify(str) {
     .replace(/(^-|-$)/g, '')
 }
 
+// Coupe sans casser un mot en deux.
+function truncate(str, max) {
+  if (str.length <= max) return str
+  return str.slice(0, max).replace(/\s+\S*$/, '')
+}
+
 function buildRows(card, price, qty, condition, langue, nomFr) {
   const total = card.set?.printedTotal || card.set?.total || '?'
   const displayName = nomFr && nomFr.trim() ? nomFr.trim() : card.name
   const numero = `${card.number}/${total}`
   const setName = card.set?.name || ''
+  const rarityRaw = card.rarity || ''
+  const rarity = RARETES[rarityRaw] || rarityRaw
+
   const title = `${displayName} - ${numero} - ${setName} - ${condition} - ${langue}`
   const handle = slugify(title)
-  const rarity = card.rarity || ''
   const sku = `PKM-${(card.set?.id || 'XX').toUpperCase()}-${card.number}-${condition.replace(/[^A-Z]/g, '')}-${langue.slice(0, 2).toUpperCase()}`
   const tags = [setName, rarity, 'Pokemon TCG', 'Carte Pokemon', langue, 'carte-unitaire'].filter(Boolean).join(', ')
   const description = `<p><strong>${displayName}</strong> - ${setName}</p><p>Numéro : ${numero} | Rareté : ${rarity} | État : ${condition} | Langue : ${langue}</p><p>Carte vérifiée à la main, recto et verso. La photo montre la carte que tu recevras.</p>`
-  const seoDesc = `Carte Pokémon ${displayName} ${numero} - ${setName} - ${condition} - ${langue}. Vérifiée à la main, photo réelle, envoi protégé.`.slice(0, 320)
-  const imgAlt = `Carte Pokémon ${displayName} ${numero} ${setName}`
+
+  const seoTitle = truncate(`${displayName} ${numero} ${setName} ${condition}`, 68)
+  const seoDesc = truncate(`Carte Pokémon ${displayName} ${numero} - ${setName} - ${condition} - ${langue}. Vérifiée à la main, photo réelle, envoi protégé.`, 320)
 
   // Si IMG_BASE est renseigné, on pointe vers tes propres photos nommées d'après le SKU.
   const recto = IMG_BASE ? `${IMG_BASE}/${sku}-1.jpg` : (card.images?.small || '')
   const verso = IMG_BASE ? `${IMG_BASE}/${sku}-2.jpg` : ''
+
+  // Sans URL d'image, position et alt doivent rester vides,
+  // sinon Shopify rejette le fichier ("Missing image source data").
+  const imgAlt = recto ? `Carte Pokémon ${displayName} ${numero} ${setName}` : ''
+  const imgPos = recto ? '1' : ''
 
   const mainRow = [
     title, handle, description, 'Love2Collect',
@@ -67,13 +87,13 @@ function buildRows(card, price, qty, condition, langue, nomFr) {
     qty, 'TRUE',
     'TRUE', 'manual',
     '10',
-    recto, '1', imgAlt,
-    title.slice(0, 70), seoDesc,
+    recto, imgPos, imgAlt,
+    seoTitle, seoDesc,
     'carte-a-l-unite',
     setName, rarity, condition, langue, numero
   ]
 
-  if (!IMG_BASE || !EXPORT_VERSO) return [mainRow]
+  if (!verso || !EXPORT_VERSO) return [mainRow]
 
   // Ligne supplémentaire pour le verso : uniquement le handle et l'image.
   const versoRow = SHOPIFY_HEADERS.map((h) => {
