@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import './PhotoTool.css'
+import './Phototool.css'
 
 // Largeur/hauteur maximale du plus grand côté, en pixels.
 const MAX_SIDE = 1400
