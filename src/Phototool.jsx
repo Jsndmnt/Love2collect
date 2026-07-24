@@ -10,15 +10,47 @@ function formatKo(octets) {
   return `${Math.round(octets / 1024)} Ko`
 }
 
-// Redresse la photo selon sa balise EXIF, la redimensionne et la recompresse.
-// Le canvas écrit une image sans métadonnées : l'étiquette d'orientation
-// disparaît et les pixels sont physiquement dans le bon sens.
-async function traiter(file) {
+// Lit la balise EXIF Orientation (1 à 8) directement dans l'en-tête du JPEG.
+// Renvoie null si le fichier n'a pas d'EXIF du tout.
+async function lireOrientationExif(file) {
+  try {
+    const buf = await file.slice(0, 131072).arrayBuffer()
+    const view = new DataView(buf)
+    if (view.getUint16(0, false) !== 0xFFD8) return null
+    let offset = 2
+    while (offset + 4 < view.byteLength) {
+      const marker = view.getUint16(offset, false)
+      if ((marker & 0xFF00) !== 0xFF00) return null
+      if (marker === 0xFFE1) {
+        const exifStart = offset + 4
+        if (view.getUint32(exifStart, false) !== 0x45786966) return null
+        const tiff = exifStart + 6
+        const little = view.getUint16(tiff, false) === 0x4949
+        const dirStart = tiff + view.getUint32(tiff + 4, little)
+        const entries = view.getUint16(dirStart, little)
+        for (let i = 0; i < entries; i++) {
+          const entry = dirStart + 2 + i * 12
+          if (view.getUint16(entry, little) === 0x0112) {
+            return view.getUint16(entry + 8, little)
+          }
+        }
+        return null
+      }
+      offset += 2 + view.getUint16(offset + 2, false)
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+// Redresse selon l'EXIF, applique une rotation manuelle optionnelle,
+// redimensionne et recompresse. Le canvas écrit une image sans métadonnées.
+async function traiter(file, rotation = 0) {
   let source
   try {
     source = await createImageBitmap(file, { imageOrientation: 'from-image' })
   } catch {
-    // Repli pour les navigateurs qui ne gèrent pas l'option.
     source = await new Promise((res, rej) => {
       const img = new Image()
       img.onload = () => res(img)
@@ -27,21 +59,22 @@ async function traiter(file) {
     })
   }
 
-  const w = source.width
-  const h = source.height
-  const ratio = Math.min(1, MAX_SIDE / Math.max(w, h))
-  const cw = Math.round(w * ratio)
-  const ch = Math.round(h * ratio)
+  const ratio = Math.min(1, MAX_SIDE / Math.max(source.width, source.height))
+  const cw = Math.round(source.width * ratio)
+  const ch = Math.round(source.height * ratio)
+  const pivote = rotation === 90 || rotation === 270
 
   const canvas = document.createElement('canvas')
-  canvas.width = cw
-  canvas.height = ch
+  canvas.width = pivote ? ch : cw
+  canvas.height = pivote ? cw : ch
   const ctx = canvas.getContext('2d')
   ctx.imageSmoothingQuality = 'high'
-  ctx.drawImage(source, 0, 0, cw, ch)
+  ctx.translate(canvas.width / 2, canvas.height / 2)
+  ctx.rotate((rotation * Math.PI) / 180)
+  ctx.drawImage(source, -cw / 2, -ch / 2, cw, ch)
 
   const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', QUALITE))
-  return { blob, url: URL.createObjectURL(blob), largeur: cw, hauteur: ch }
+  return { blob, url: URL.createObjectURL(blob), largeur: canvas.width, hauteur: canvas.height }
 }
 
 export default function PhotoTool({ skus = [] }) {
@@ -56,10 +89,14 @@ export default function PhotoTool({ skus = [] }) {
     const traitees = []
     for (const f of liste) {
       try {
-        const r = await traiter(f)
+        const exif = await lireOrientationExif(f)
+        const r = await traiter(f, 0)
         traitees.push({
           id: `${f.name}-${Date.now()}-${Math.random()}`,
+          file: f,
           nomOrigine: f.name,
+          exif,
+          rotation: 0,
           tailleAvant: f.size,
           tailleApres: r.blob.size,
           largeur: r.largeur,
@@ -70,7 +107,7 @@ export default function PhotoTool({ skus = [] }) {
           face: '1'
         })
       } catch {
-        // Fichier illisible : on l'ignore silencieusement.
+        // Fichier illisible : ignoré.
       }
     }
     setPhotos(prev => [...prev, ...traitees])
@@ -81,9 +118,17 @@ export default function PhotoTool({ skus = [] }) {
     setPhotos(prev => prev.map(p => p.id === id ? { ...p, [champ]: valeur } : p))
   }
 
-  const supprimer = (id) => {
-    setPhotos(prev => prev.filter(p => p.id !== id))
+  const tourner = async (id, sens) => {
+    const p = photos.find(x => x.id === id)
+    if (!p) return
+    const rotation = (p.rotation + (sens === 'droite' ? 90 : 270)) % 360
+    const r = await traiter(p.file, rotation)
+    setPhotos(prev => prev.map(x => x.id === id
+      ? { ...x, rotation, blob: r.blob, url: r.url, largeur: r.largeur, hauteur: r.hauteur, tailleApres: r.blob.size }
+      : x))
   }
+
+  const supprimer = (id) => setPhotos(prev => prev.filter(p => p.id !== id))
 
   const nomFinal = (p) => p.sku ? `${p.sku}-${p.face}.jpg` : ''
 
@@ -97,10 +142,8 @@ export default function PhotoTool({ skus = [] }) {
   }
 
   const toutTelecharger = async () => {
-    const pretes = photos.filter(p => p.sku)
-    for (const p of pretes) {
+    for (const p of photos.filter(x => x.sku)) {
       telecharger(p)
-      // Petite pause, sinon le navigateur bloque les téléchargements en rafale.
       await new Promise(r => setTimeout(r, 400))
     }
   }
@@ -117,11 +160,9 @@ export default function PhotoTool({ skus = [] }) {
         onDrop={e => { e.preventDefault(); ajouter(e.dataTransfer.files) }}
       >
         <div className="dz-icon">📷</div>
-        <div className="dz-text">
-          Dépose tes photos ici, ou clique pour les choisir
-        </div>
+        <div className="dz-text">Dépose tes photos ici, ou clique pour les choisir</div>
         <div className="dz-sub">
-          Redressement automatique · {MAX_SIDE} px max · JPEG qualité {Math.round(QUALITE * 100)}
+          Redressement EXIF · rotation manuelle · {MAX_SIDE} px max · JPEG qualité {Math.round(QUALITE * 100)}
         </div>
         <input
           ref={inputRef}
@@ -144,7 +185,17 @@ export default function PhotoTool({ skus = [] }) {
                 <div className="photo-details">
                   <div className="photo-orig">{p.nomOrigine}</div>
                   <div className="photo-stats">
-                    {p.largeur}×{p.hauteur} px · {formatKo(p.tailleAvant)} → <strong>{formatKo(p.tailleApres)}</strong>
+                    <strong>{p.largeur}×{p.hauteur}</strong> px · {formatKo(p.tailleAvant)} → {formatKo(p.tailleApres)}
+                  </div>
+                  <div className={`photo-exif ${p.exif ? 'ok' : 'ko'}`}>
+                    {p.exif
+                      ? `EXIF orientation ${p.exif} — redressement automatique appliqué`
+                      : 'Aucune donnée EXIF — rotation à faire à la main'}
+                  </div>
+                  <div className="photo-rotate">
+                    <button className="rot-btn" onClick={() => tourner(p.id, 'gauche')}>↺</button>
+                    <button className="rot-btn" onClick={() => tourner(p.id, 'droite')}>↻</button>
+                    <span className="rot-val">{p.rotation}°</span>
                   </div>
                   <div className="photo-controls">
                     <div className="fg">
