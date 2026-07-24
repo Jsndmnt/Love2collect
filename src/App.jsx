@@ -80,7 +80,7 @@ function buildRows(card, price, qty, condition, langue, nomFr) {
 
   const mainRow = [
     title, handle, description, 'Love2Collect',
-    'Arts & Entertainment > Hobbies & Creative Arts > Collectibles > Collectible Trading Cards',
+    'Arts et loisirs > Loisirs et arts créatifs > Articles de collection > Cartes à collectionner',
     'Carte Pokemon TCG', tags,
     'TRUE', 'active', sku,
     parseFloat(price || 0).toFixed(2), '', '', 'TRUE', 'shopify',
