@@ -52,6 +52,12 @@ function truncate(str, max) {
   return str.slice(0, max).replace(/\s+\S*$/, '')
 }
 
+// Récupère le code entre parenthèses : "Excellent (EX)" -> "EX"
+function codeEtat(condition) {
+  const m = condition.match(/\(([^)]+)\)/)
+  return m ? m[1].toUpperCase() : condition.replace(/[^A-Z]/g, '')
+}
+
 function buildRows(card, price, qty, condition, langue, nomFr) {
   const total = card.set?.printedTotal || card.set?.total || '?'
   const displayName = nomFr && nomFr.trim() ? nomFr.trim() : card.name
@@ -62,7 +68,7 @@ function buildRows(card, price, qty, condition, langue, nomFr) {
 
   const title = `${displayName} - ${numero} - ${setName} - ${condition} - ${langue}`
   const handle = slugify(title)
-  const sku = `PKM-${(card.set?.id || 'XX').toUpperCase()}-${card.number}-${condition.replace(/[^A-Z]/g, '')}-${langue.slice(0, 2).toUpperCase()}`
+  const sku = `PKM-${(card.set?.id || 'XX').toUpperCase()}-${card.number}-${codeEtat(condition)}-${langue.slice(0, 2).toUpperCase()}`
   const tags = [setName, rarity, 'Pokemon TCG', 'Carte Pokemon', langue, 'carte-unitaire'].filter(Boolean).join(', ')
   const description = `<p><strong>${displayName}</strong> - ${setName}</p><p>Numéro : ${numero} | Rareté : ${rarity} | État : ${condition} | Langue : ${langue}</p><p>Carte vérifiée à la main, recto et verso. La photo montre la carte que tu recevras.</p>`
 
