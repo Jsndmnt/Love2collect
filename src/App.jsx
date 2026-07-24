@@ -1,11 +1,12 @@
 import { useState, useCallback, useRef } from 'react'
+import PhotoTool from './PhotoTool.jsx'
 import './App.css'
 
 // ── À REMPLIR ────────────────────────────────────────────────────────────────
 // URL de base de tes images hébergées sur Vercel, SANS slash final.
 // Exemple : 'https://love2collect.vercel.app/cartes'
 // Laisse la chaîne vide pour garder l'ancien comportement (image officielle de l'API).
-const IMG_BASE = 'https://love2collect.vercel.app/cartes'
+const IMG_BASE = ''
 // Mets à false si tu ne photographies que le recto.
 const EXPORT_VERSO = true
 
@@ -58,6 +59,11 @@ function codeEtat(condition) {
   return m ? m[1].toUpperCase() : condition.replace(/[^A-Z]/g, '')
 }
 
+// Construit le SKU. Sert aussi de nom de fichier pour les photos.
+function buildSku(card, condition, langue) {
+  return `PKM-${(card.set?.id || 'XX').toUpperCase()}-${card.number}-${codeEtat(condition)}-${langue.slice(0, 2).toUpperCase()}`
+}
+
 function buildRows(card, price, qty, condition, langue, nomFr) {
   const total = card.set?.printedTotal || card.set?.total || '?'
   const displayName = nomFr && nomFr.trim() ? nomFr.trim() : card.name
@@ -68,7 +74,7 @@ function buildRows(card, price, qty, condition, langue, nomFr) {
 
   const title = `${displayName} - ${numero} - ${setName} - ${condition} - ${langue}`
   const handle = slugify(title)
-  const sku = `PKM-${(card.set?.id || 'XX').toUpperCase()}-${card.number}-${codeEtat(condition)}-${langue.slice(0, 2).toUpperCase()}`
+  const sku = buildSku(card, condition, langue)
   const tags = [setName, rarity, 'Pokemon TCG', 'Carte Pokemon', langue, 'carte-unitaire'].filter(Boolean).join(', ')
   const description = `<p><strong>${displayName}</strong> - ${setName}</p><p>Numéro : ${numero} | Rareté : ${rarity} | État : ${condition} | Langue : ${langue}</p><p>Carte vérifiée à la main, recto et verso. La photo montre la carte que tu recevras.</p>`
 
@@ -260,6 +266,7 @@ export default function App() {
         <button className={`tab ${view === 'basket' ? 'active' : ''}`} onClick={() => setView('basket')}>
           🛒 Panier {basket.length > 0 && <span className="badge">{basket.length}</span>}
         </button>
+        <button className={`tab ${view === 'photos' ? 'active' : ''}`} onClick={() => setView('photos')}>📷 Photos</button>
       </div>
 
       <div className="content">
@@ -302,6 +309,9 @@ export default function App() {
               </>
             }
           </>
+        )}
+        {view === 'photos' && (
+          <PhotoTool skus={basket.map(i => buildSku(i.card, i.condition, i.langue || 'Français'))} />
         )}
       </div>
 
