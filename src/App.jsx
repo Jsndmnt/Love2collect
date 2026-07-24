@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import PhotoTool from './PhotoTool.jsx'
+import PhotoTool from './Phototool.jsx'
 import './App.css'
 
 // ── À REMPLIR ────────────────────────────────────────────────────────────────
